@@ -1,0 +1,263 @@
+---
+title: "Penguins Assignment"
+output:
+  html_document: default
+  pdf_document: default
+date: "2023-10-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#install.packages(c("ggplot2", "palmerpenguins", "janitor", "dplyr", "svglite"))
+
+library(ggplot2)
+library(palmerpenguins)
+library(janitor)
+library(dplyr)
+library(svglite)
+
+source("Functions/cleaning.R")
+source("Functions/plotting.R")
+source("Functions/libraries.R")
+```
+
+## QUESTION 01: Data Visualisation for Science Communication
+
+### a) Provide your figure here:
+
+```{r bad figure code, echo=FALSE}
+
+# There is no need to provide the code for your bad figure, just use echo=FALSE so the code is hidden. Make sure your figure is visible after you knit it. 
+
+```
+
+### b) Write about how your design choices mislead the reader about the underlying data (200-300 words).
+
+*Include references.*
+
+------------------------------------------------------------------------
+
+## QUESTION 2: Data Pipeline
+
+*Write a data analysis pipeline in your .rmd RMarkdown file. You should be aiming to write a clear explanation of the steps as well as clear code.*
+
+*Your code should include the steps practiced in the lab session:*
+
+-   *Load the data*
+
+-   *Appropriately clean the data*
+
+-   *Create an Exploratory Figure (**not a boxplot**)*
+
+-   *Save the figure*
+
+-   ***New**: Run a statistical test*
+
+-   ***New**: Create a Results Figure*
+
+-   *Save the figure*
+
+*An exploratory figure shows raw data, such as the distribution of the data. A results figure demonstrates the stats method chosen, and includes the results of the stats test.*
+
+*Between your code, communicate clearly what you are doing and why.*
+
+*Your text should include:*
+
+-   *Introduction*
+
+-   *Hypothesis*
+
+-   *Stats Method*
+
+-   *Results*
+
+-   *Discussion*
+
+-   *Conclusion*
+
+*You will be marked on the following:*
+
+### a) Your code for readability and functionality
+
+### b) Your figures for communication
+
+### c) Your text communication of your analysis
+
+*Below is a template you can use.*
+
+------------------------------------------------------------------------
+
+### Introduction
+
+This data pipeline will aim to investigate flipper size of penguins in correlation to their body mass.
+
+**Hypotheses**
+
+-   H0: There is no linear correlation between body mass and flipper length in penguins
+
+-   H1: There is a linear correlation between body mass and flipper length in penguins
+
+The biological reasoning for H1 is that penguins with higher body mass would benefit from the greater propulsion that longer flippers would provide, giving them an evolutionary advantage over less efficient swimmers with the same body mass.
+
+Firstly, we need to load the data, then clean the data set.
+
+```{r Data Exploration}
+#loading the data
+write.csv("penguins_raw.csv")
+
+#cleaning data and checking new data frame
+#removing 'Delta 15 N (o/oo)','Delta 13', comments
+penguins_clean <- select(penguins_raw,-starts_with("Delta"))
+penguins_clean <- select(penguins_clean,-Comments)
+#further cleaning
+penguins_clean <- penguins_raw %>%
+  clean_column_names() %>%
+  shorten_species() %>%
+  remove_empty()
+
+```
+
+Next, we will create a data frame including only the columns 'flipper length' and 'body mass'.
+
+```{r}
+#subsetting the relevant columns by column number (columns 13 and 14)
+fm_data=penguins_clean[,12:13]
+#omitting rows with N/A values
+fm_data <- na.omit(fm_data)
+
+```
+
+Now that we have the relevant data frame, we can create an exploratory plot to better visualise the raw data. Here, we have used a scatter plot as both the variables are continuous.
+
+```{r}
+#creating a scatterplot to show data distribution
+figure1 = ggplot(fm_data, aes(x = flipper_length_mm, y = body_mass_g)) +
+  geom_point() + 
+  labs(title = "Scatterplot Indicating the Relationship of Body Mass and Flipper length in Penguins",
+       x = "Body Mass (g)",
+       y = "Flipper Length(mm)")
+#saving the figure
+ggsave("figure1.png",plot = figure1, width = 6, height = 4, units = "in")
+
+print(figure1)
+```
+
+### Statistical Methods and Results
+
+We can now test our hypotheses, using a statistical test:
+
+-   H0: There is no linear correlation between body mass and flipper length in penguins
+
+-   H1: There is a linear correlation between body mass and flipper length in penguins
+
+As we are testing the linear relationship between two continuous variables, we can use Pearson's Correlation Coefficient. This coefficient ranges from -1 to 1, with -1 indicating a perfect negative correlation, and 1 indicating a perfect positive correlation, with 0 representing no correlation at all. A scatterplot can also help us visualise this relationship.
+
+Firstly, let us calculate the Pearson's coefficient for the relationship between Body Mass and Flipper Length.
+
+```{r Statistics}
+#calculating Pearson's coefficient
+cor_coefficient = cor(fm_data$body_mass_g, fm_data$flipper_length_mm, method = "pearson")
+#printing result
+cor_coefficient
+
+```
+
+As shown above, his code has produced a figure of 0.871, which represents a very strong position linear correlation between these two variables.
+
+We will now create a scatterplot of body mass against flipper length, to visualise the strength and direction of this relationship.
+
+```{r}
+#creating a scatterplot to show correlation
+figure2 = ggplot(fm_data, aes(x = body_mass_g, y = flipper_length_mm)) +
+  geom_point() + 
+#fitting a smoothed line to visually assess the trend
+   geom_smooth(method = "lm", se = TRUE, color = "blue", fill = "red", alpha = 0.5) +
+#annotating the plot with the coefficient value
+  annotate("text", x = min(fm_data$body_mass_g), y = max(fm_data$flipper_length_mm), label = "r =0.871", hjust = 0, vjust = 1) +
+#labelling the title; x and y axes
+  labs(title = "Scatterplot Indicating the Relationship of Body Mass and Flipper length in Penguins",
+       x = "Body Mass (g)",
+       y = "Flipper Length(mm)")
+#saving the figure
+ggsave("figure2.png",plot = figure2, width = 6, height = 4, units = "in")
+
+print(figure2)
+
+```
+
+Finally, we can test the statistical significance of our Pearson's correlation coefficient using the test statistic for the correlation coefficient, at a significance level of 0.05.
+
+The test statistic is calculated as follows:\
+**t = r√n−2√1−r2\
+***where r is the sample correlation and n is the sample size*
+
+```{r}
+#plugging in the sample size value
+n = length(fm_data$body_mass_g)
+#calculating the test statistic
+test_statistic = cor_coefficient * sqrt(n - 2) / sqrt(1 - cor_coefficient^2)
+#calculating p-value 
+p_value = 2 * pt(abs(test_statistic), df = n - 2, lower.tail = FALSE)
+#printing Pearson's 
+cat("Correlation Coefficient:", round(cor_coefficient, 3), "\n")
+#printing test statistic
+cat("Test Statistic:", round(test_statistic, 3), "\n")
+#printing p-value
+cat("P-Value:", p_value, "\n")
+#reject or fail to reject H0 at a significance level of 0.05
+if (p_value < 0.05) {
+  cat("Reject the null hypothesis: There is a significant correlation.\n")
+} else {
+  cat("Fail to reject the null hypothesis: There is no significant correlation.\n")
+}
+
+```
+
+### Discussion
+
+Our test statistic indicates that the linear correlation between the variables in this data set is significant. Therefore we reject the null hypothesis, and fail to reject our H1 - that there is a linear correlation between body mass and flipper length for the penguins in this data set.
+
+Although the test statistic for correlation coefficient does not have a direct analog (like in a t-test), the value of 32.722 signifies that the strong positive correlation from this data set is unlikely due to random chance. Further, our extremely small p-value of 4.370681x10\^-107, which falls far below our significance level of 0.05 further indicates a statistically significant correlation between our variables. Thus, there is sufficient evidence to reject the null hypothesis.
+
+Indeed, the strong positive linear correlation between body mass and flipper length in penguins may be due to a number of reasons. For example, individuals with higher body mass may benefit from greater propulsion from longer flippers, allowing them to swim more efficiency. Further, both large body size and flipper size can contribute to thermoregulation by reducing surface area for heat loss, and may also aid in events pertaining to social dynamics, such as courtship rituals.
+
+### Conclusion
+
+To conclude, our results show a statistically significant strong positive correlation between body mass (g) and flipper length (mm).
+
+In future analysis, it would be interesting to examine how the correlation between body mass and flipper size differs between species, islands and regions. Through the generation of hypotheses regarding how other factors affect the relationship between body mass and flipper length, we can obtain a better understanding the evolutionary and adaption history of penguins.
+
+------------------------------------------------------------------------
+
+## QUESTION 3: Open Science
+
+### a) GitHub
+
+*Upload your RProject you created for **Question 2** and any files and subfolders used to GitHub. Do not include any identifiers such as your name. Make sure your GitHub repo is public.*
+
+*GitHub link:*
+
+*You will be marked on your repo organisation and readability.*
+
+### b) Share your repo with a partner, download, and try to run their data pipeline.
+
+*Partner's GitHub link:*
+
+*You **must** provide this so I can verify there is no plagiarism between you and your partner.*
+
+### c) Reflect on your experience running their code. (300-500 words)
+
+-   *What elements of your partner's code helped you to understand their data pipeline?*
+
+-   *Did it run? Did you need to fix anything?*
+
+-   *What suggestions would you make for improving their code to make it more understandable or reproducible, and why?*
+
+-   *If you needed to alter your partner's figure using their code, do you think that would be easy or difficult, and why?*
+
+### d) Reflect on your own code based on your experience with your partner's code and their review of yours. (300-500 words)
+
+-   *What improvements did they suggest, and do you agree?*
+
+-   *What did you learn about writing code for other people?*
